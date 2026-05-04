@@ -212,7 +212,6 @@ if uploaded_file:
 
         st.markdown(colored_text, unsafe_allow_html=True)
 
-        # LEGEND
         st.write("### 🎨 Legend")
         legend_html = ""
         for key, val in color_map.items():
