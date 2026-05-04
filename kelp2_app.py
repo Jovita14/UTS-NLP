@@ -43,9 +43,20 @@ html, body, [data-testid="stAppViewContainer"]{background:var(--bg)!important;co
 .upload-panel,.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem 1.35rem;margin-bottom:1.15rem;box-shadow:0 10px 24px rgba(0,0,0,.18)}
 .panel-title{font-size:1.05rem!important;font-weight:800!important;letter-spacing:.05em;text-transform:uppercase;color:var(--text)!important;margin:0 0 1rem!important}.panel-title b{color:var(--accent)}
 .small-label{font-size:.78rem;color:var(--muted);font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.45rem}
-[data-testid="stFileUploader"]{background:var(--panel2)!important;border:1.5px dashed var(--border)!important;border-radius:14px!important;padding:.8rem!important}
-[data-testid="stFileUploader"]:hover{border-color:var(--accent)!important;background:#182944!important}
-[data-testid="stFileUploader"] *{color:var(--text)!important;opacity:1!important}.uploadedFile{background:#1b2d48!important;color:var(--text)!important;border:1px solid #36577d!important;border-radius:12px!important}.uploadedFile *{color:var(--text)!important;opacity:1!important}.uploadedFile [data-testid='stFileUploaderFileName']{color:#eaf2ff!important}.uploadedFile [data-testid='stFileUploaderFileSize']{color:#b8c4d6!important}
+[data-testid="stFileUploader"]{background:transparent!important;border:0!important;padding:0!important}
+[data-testid="stFileUploaderDropzone"],
+[data-testid="stFileUploader"] section{background:#142844!important;border:1.5px dashed #416284!important;border-radius:14px!important;padding:.9rem!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)!important}
+[data-testid="stFileUploaderDropzone"]:hover,
+[data-testid="stFileUploader"] section:hover{border-color:var(--accent)!important;background:#183455!important}
+[data-testid="stFileUploader"] *{color:#f4f7fb!important;opacity:1!important}
+[data-testid="stFileUploader"] button{background:#0f1f36!important;color:#f4f7fb!important;border:1px solid #416284!important;border-radius:10px!important}
+[data-testid="stFileUploader"] small,
+[data-testid="stFileUploader"] span,
+[data-testid="stFileUploader"] p{color:#dbeafe!important}
+.uploadedFile{background:#12304b!important;color:#f4f7fb!important;border:1px solid #416284!important;border-radius:12px!important}
+.uploadedFile *{color:#f4f7fb!important;opacity:1!important}
+.uploadedFile [data-testid='stFileUploaderFileName']{color:#ffffff!important;font-weight:800!important}
+.uploadedFile [data-testid='stFileUploaderFileSize']{color:#c7d2fe!important}
 [data-testid="stSelectbox"] label,[data-testid="stRadio"] label,[data-testid="stSlider"] label{color:var(--soft)!important;font-weight:700!important}
 [data-testid="stSelectbox"] div,[data-testid="stSlider"] *{color:var(--text)!important}.stSelectbox [data-baseweb="select"]>div{background:var(--panel2)!important;border-color:var(--border)!important;color:var(--text)!important}
 .stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin:1rem 0 1.2rem}.stat{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:16px;padding:1.05rem;position:relative;overflow:hidden}.stat:before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--accent),var(--accent2))}.stat .icon{font-size:1.55rem}.stat .val{font-size:2.15rem;font-weight:800;line-height:1;margin:.55rem 0 .2rem;color:var(--text)}.stat .label{font-size:.78rem;color:var(--soft);letter-spacing:.08em;text-transform:uppercase;font-weight:700}
@@ -243,7 +254,17 @@ else:
         st.markdown("<div class='panel'><div class='panel-title'>📄 <b>Preview</b> Dataset</div>", unsafe_allow_html=True)
         show_cols = [c for c in ["source_file", "text", "accept", "spans", "word_count"] if c in df.columns]
         st.dataframe(df[show_cols].head(100), use_container_width=True, height=430)
-        st.markdown("<div class='insight'><b>Keterangan:</b> halaman ini dipakai untuk mengecek isi data setelah file digabung. Kolom <code>accept</code> adalah daftar label ABSA, <code>spans</code> adalah posisi entitas NER, dan <code>word_count</code> adalah jumlah kata hasil cleaning sederhana.</div></div>", unsafe_allow_html=True)
+        st.markdown("""
+        <div class='insight'>
+          <b>Keterangan Overview:</b><br>
+          Dataset yang digunakan dalam analisis ini merupakan hasil proses cleaning dari data anotasi awal.
+          Setelah proses pembersihan data, jumlah data yang dapat digunakan sebanyak <b>678 review</b>.
+          Jumlah ini berada di bawah ketentuan minimum proyek, yaitu <b>800 data</b>, namun tetap digunakan
+          untuk menjaga kualitas data yang dianalisis dengan menghindari data yang tidak valid, duplikat, kosong,
+          atau rusak. Pada tabel preview, kolom <code>accept</code> berisi label ABSA, kolom <code>spans</code> berisi
+          posisi entitas NER, dan kolom <code>word_count</code> menunjukkan panjang review setelah cleaning sederhana.
+        </div></div>
+        """, unsafe_allow_html=True)
 
     elif menu == "Distribusi Label":
         st.markdown("<div class='panel'><div class='panel-title'>📊 <b>Distribusi</b> Label ABSA</div>", unsafe_allow_html=True)
