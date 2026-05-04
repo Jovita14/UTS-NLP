@@ -1,18 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Kelp2_app - Redesigned with modern, premium UI"""
+"""ABSA EDA & IRR Dashboard - fixed UI and robust upload handling."""
 
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import seaborn as sns
 import json
 import re
+from html import escape
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+import streamlit as st
 from sklearn.preprocessing import MultiLabelBinarizer
 
-# ─────────────────────────────────────────────
-# PAGE CONFIG
-# ─────────────────────────────────────────────
 st.set_page_config(
     page_title="ABSA Analytics Dashboard",
     page_icon="🌿",
@@ -20,787 +18,336 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ─────────────────────────────────────────────
-# GLOBAL CSS
-# ─────────────────────────────────────────────
-st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-
+# -----------------------------
+# Styling: high contrast, cleaner layout
+# -----------------------------
+st.markdown(
+    """
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-/* ── ROOT VARIABLES ── */
-:root {
-    --bg:        #0b0f1a;
-    --surface:   #111827;
-    --surface2:  #1a2235;
-    --border:    #1e2d45;
-    --accent:    #00e5c3;
-    --accent2:   #7b61ff;
-    --accent3:   #ff6b6b;
-    --text:      #e8edf5;
-    --muted:     #8899aa;
-    --gold:      #f5c842;
-    --radius:    14px;
+:root{
+  --bg:#07111f; --panel:#101c2f; --panel2:#14233a; --panel3:#0d1829;
+  --border:#2b3f5f; --text:#f4f7fb; --muted:#b8c4d6; --soft:#d9e3f2;
+  --accent:#18e0c4; --accent2:#60a5fa; --warn:#f59e0b; --bad:#fb7185; --good:#22c55e;
+  --radius:18px;
 }
-
-/* ── BASE ── */
-html, body, [data-testid="stAppViewContainer"] {
-    background: var(--bg) !important;
-    color: var(--text) !important;
-    font-family: 'DM Sans', sans-serif !important;
-}
-
-/* ── SIDEBAR ── */
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0d1421 0%, #111827 100%) !important;
-    border-right: 1px solid var(--border) !important;
-}
-[data-testid="stSidebar"] * { color: var(--text) !important; }
-
-/* ── SIDEBAR HEADER ── */
-.sidebar-brand {
-    padding: 1.5rem 0 1rem;
-    text-align: center;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 1.5rem;
-}
-.sidebar-brand .logo {
-    font-size: 2.8rem;
-    line-height: 1;
-}
-.sidebar-brand h2 {
-    font-family: 'Syne', sans-serif !important;
-    font-size: 1.1rem !important;
-    font-weight: 800 !important;
-    letter-spacing: .12em;
-    color: var(--accent) !important;
-    margin: .4rem 0 .1rem !important;
-    text-transform: uppercase;
-}
-.sidebar-brand p {
-    font-size: .72rem;
-    color: var(--muted) !important;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-}
-
-/* ── SIDEBAR NAV ── */
-[data-testid="stRadio"] label,
-[data-testid="stSelectbox"] label {
-    font-family: 'Syne', sans-serif !important;
-    font-size: .72rem !important;
-    letter-spacing: .12em !important;
-    text-transform: uppercase !important;
-    color: var(--muted) !important;
-    font-weight: 600 !important;
-}
-
-/* ── HERO HEADER ── */
-.hero {
-    background: linear-gradient(135deg, #0d1f35 0%, #0b1628 50%, #0f1e30 100%);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 2.4rem 2.8rem;
-    margin-bottom: 1.8rem;
-    position: relative;
-    overflow: hidden;
-}
-.hero::before {
-    content: '';
-    position: absolute;
-    top: -60px; right: -60px;
-    width: 260px; height: 260px;
-    background: radial-gradient(circle, rgba(0,229,195,.12) 0%, transparent 70%);
-    border-radius: 50%;
-}
-.hero::after {
-    content: '';
-    position: absolute;
-    bottom: -40px; left: 20%;
-    width: 180px; height: 180px;
-    background: radial-gradient(circle, rgba(123,97,255,.10) 0%, transparent 70%);
-    border-radius: 50%;
-}
-.hero-tag {
-    display: inline-block;
-    background: rgba(0,229,195,.12);
-    border: 1px solid rgba(0,229,195,.3);
-    color: var(--accent) !important;
-    font-size: .68rem;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    padding: .25rem .8rem;
-    border-radius: 99px;
-    font-weight: 600;
-    margin-bottom: .9rem;
-}
-.hero h1 {
-    font-family: 'Syne', sans-serif !important;
-    font-size: 2.4rem !important;
-    font-weight: 800 !important;
-    color: var(--text) !important;
-    margin: 0 0 .5rem !important;
-    line-height: 1.2 !important;
-}
-.hero h1 span { color: var(--accent); }
-.hero p {
-    color: var(--muted) !important;
-    font-size: .95rem;
-    margin: 0 !important;
-    max-width: 520px;
-}
-
-/* ── STAT CARDS ── */
-.stat-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1rem;
-    margin-bottom: 1.8rem;
-}
-.stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.3rem 1.5rem;
-    position: relative;
-    overflow: hidden;
-    transition: border-color .2s;
-}
-.stat-card:hover { border-color: var(--accent); }
-.stat-card .accent-bar {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-}
-.stat-card .s-icon {
-    font-size: 1.4rem;
-    margin-bottom: .5rem;
-}
-.stat-card .s-val {
-    font-family: 'Syne', sans-serif;
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--text);
-    line-height: 1;
-    margin-bottom: .25rem;
-}
-.stat-card .s-label {
-    font-size: .72rem;
-    color: var(--muted);
-    letter-spacing: .08em;
-    text-transform: uppercase;
-}
-
-/* ── PANEL ── */
-.panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.8rem 2rem;
-    margin-bottom: 1.4rem;
-}
-.panel-title {
-    font-family: 'Syne', sans-serif !important;
-    font-size: 1rem !important;
-    font-weight: 700 !important;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    color: var(--text) !important;
-    margin-bottom: 1.2rem !important;
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-}
-.panel-title span { color: var(--accent); }
-
-/* ── INSIGHT BOX ── */
-.insight-box {
-    background: linear-gradient(135deg, rgba(0,229,195,.06), rgba(123,97,255,.06));
-    border: 1px solid rgba(0,229,195,.18);
-    border-radius: 10px;
-    padding: 1.2rem 1.4rem;
-    margin-top: 1.4rem;
-}
-.insight-box .i-title {
-    font-family: 'Syne', sans-serif;
-    font-size: .78rem;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--accent);
-    font-weight: 700;
-    margin-bottom: .7rem;
-}
-.insight-box ul {
-    margin: 0; padding-left: 1.1rem;
-    color: var(--muted);
-    font-size: .88rem;
-    line-height: 1.7;
-}
-.insight-box ul li::marker { color: var(--accent); }
-.insight-box .warn {
-    margin-top: .8rem;
-    padding-top: .8rem;
-    border-top: 1px solid rgba(255,107,107,.15);
-    color: var(--accent3);
-    font-size: .82rem;
-    font-weight: 500;
-}
-
-/* ── BADGE ── */
-.badge {
-    display: inline-block;
-    padding: .2rem .7rem;
-    border-radius: 99px;
-    font-size: .72rem;
-    font-weight: 600;
-    letter-spacing: .06em;
-}
-.badge-green  { background: rgba(0,229,195,.15); color: var(--accent); border: 1px solid rgba(0,229,195,.3); }
-.badge-purple { background: rgba(123,97,255,.15); color: var(--accent2); border: 1px solid rgba(123,97,255,.3); }
-.badge-red    { background: rgba(255,107,107,.15); color: var(--accent3); border: 1px solid rgba(255,107,107,.3); }
-
-/* ── NER ENTITY ── */
-.ner-wrap {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.4rem 1.6rem;
-    font-size: 1.05rem;
-    line-height: 2.2;
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-}
-.legend-wrap {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .6rem;
-    margin-top: 1rem;
-}
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: .4rem;
-    font-size: .8rem;
-    color: var(--muted);
-}
-.legend-dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-/* ── UPLOAD ZONE ── */
-[data-testid="stFileUploader"] {
-    background: var(--surface2) !important;
-    border: 2px dashed var(--border) !important;
-    border-radius: var(--radius) !important;
-    padding: 1rem !important;
-    transition: border-color .2s !important;
-}
-[data-testid="stFileUploader"]:hover {
-    border-color: var(--accent) !important;
-}
-[data-testid="stFileUploader"] * { color: var(--text) !important; }
-
-/* ── SELECTBOX / RADIO ── */
-[data-testid="stSelectbox"] > div > div,
-[data-testid="stRadio"] > div {
-    background: var(--surface2) !important;
-    border-color: var(--border) !important;
-    border-radius: 8px !important;
-    color: var(--text) !important;
-}
-
-/* ── SLIDER ── */
-[data-testid="stSlider"] * { color: var(--text) !important; }
-
-/* ── SUCCESS / INFO ── */
-[data-testid="stAlert"] {
-    background: rgba(0,229,195,.08) !important;
-    border: 1px solid rgba(0,229,195,.25) !important;
-    border-radius: 10px !important;
-    color: var(--accent) !important;
-}
-
-/* ── DATAFRAME ── */
-[data-testid="stDataFrame"] { border-radius: 10px; overflow: hidden; }
-
-/* ── SECTION DIVIDER ── */
-.section-divider {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin: 2.5rem 0 1.8rem;
-}
-.section-divider .sd-line { flex: 1; height: 1px; background: var(--border); }
-.section-divider .sd-label {
-    font-family: 'Syne', sans-serif;
-    font-size: .72rem;
-    letter-spacing: .16em;
-    text-transform: uppercase;
-    color: var(--muted);
-    white-space: nowrap;
-}
-
-/* ── MATPLOTLIB OVERRIDE ── */
-.stPlot { border-radius: 10px; overflow: hidden; }
-
-/* ── HIDE DEFAULT ELEMENTS ── */
-#MainMenu, footer, header { visibility: hidden !important; }
-[data-testid="stDecoration"] { display: none !important; }
+html, body, [data-testid="stAppViewContainer"]{background:var(--bg)!important;color:var(--text)!important;font-family:Inter,system-ui,sans-serif!important;}
+.block-container{padding-top:1.4rem!important;max-width:1280px!important;}
+#MainMenu, footer, header, [data-testid="stDecoration"]{visibility:hidden!important;display:none!important;}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,#091527,#101c2f)!important;border-right:1px solid var(--border)!important;}
+[data-testid="stSidebar"] *{color:var(--text)!important;}
+.sidebar-brand{padding:1.4rem 0 1.2rem;text-align:center;border-bottom:1px solid var(--border);margin-bottom:1rem;}
+.sidebar-brand .logo{font-size:2.4rem}.sidebar-brand h2{font-size:1.35rem!important;letter-spacing:.14em;color:var(--accent)!important;margin:.35rem 0 0!important;font-weight:800!important}.sidebar-brand p{font-size:.78rem;color:var(--muted)!important;letter-spacing:.08em;text-transform:uppercase}
+.hero{background:radial-gradient(circle at 85% 5%,rgba(24,224,196,.20),transparent 30%),linear-gradient(135deg,#10213a,#0b1728);border:1px solid var(--border);border-radius:var(--radius);padding:1.7rem 2rem;margin-bottom:1.2rem;box-shadow:0 12px 32px rgba(0,0,0,.20)}
+.hero h1{font-size:2.05rem!important;line-height:1.15!important;margin:0 0 .45rem!important;color:var(--text)!important;font-weight:800!important}.hero span{color:var(--accent)}.hero p{color:var(--soft)!important;font-size:1rem!important;margin:0!important;max-width:760px}.tag{display:inline-flex;align-items:center;gap:.4rem;background:rgba(24,224,196,.14);border:1px solid rgba(24,224,196,.35);color:#9ffbed!important;border-radius:999px;padding:.3rem .75rem;font-weight:700;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.75rem}
+.upload-panel,.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem 1.35rem;margin-bottom:1.15rem;box-shadow:0 10px 24px rgba(0,0,0,.18)}
+.panel-title{font-size:1.05rem!important;font-weight:800!important;letter-spacing:.05em;text-transform:uppercase;color:var(--text)!important;margin:0 0 1rem!important}.panel-title b{color:var(--accent)}
+.small-label{font-size:.78rem;color:var(--muted);font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.45rem}
+[data-testid="stFileUploader"]{background:var(--panel2)!important;border:1.5px dashed var(--border)!important;border-radius:14px!important;padding:.8rem!important}
+[data-testid="stFileUploader"]:hover{border-color:var(--accent)!important;background:#182944!important}
+[data-testid="stFileUploader"] *{color:var(--text)!important;opacity:1!important}.uploadedFile{background:#eef3fb!important;color:#111827!important;border:1px solid #cbd5e1!important}.uploadedFile *{color:#111827!important;opacity:1!important}
+[data-testid="stSelectbox"] label,[data-testid="stRadio"] label,[data-testid="stSlider"] label{color:var(--soft)!important;font-weight:700!important}
+[data-testid="stSelectbox"] div,[data-testid="stSlider"] *{color:var(--text)!important}.stSelectbox [data-baseweb="select"]>div{background:var(--panel2)!important;border-color:var(--border)!important;color:var(--text)!important}
+.stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin:1rem 0 1.2rem}.stat{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:16px;padding:1.05rem;position:relative;overflow:hidden}.stat:before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--accent),var(--accent2))}.stat .icon{font-size:1.55rem}.stat .val{font-size:2.15rem;font-weight:800;line-height:1;margin:.55rem 0 .2rem;color:var(--text)}.stat .label{font-size:.78rem;color:var(--soft);letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+.notice{border-radius:14px;padding:1rem 1.1rem;margin:.75rem 0 1rem;border:1px solid rgba(34,197,94,.35);background:rgba(34,197,94,.11);color:#bbf7d0;font-weight:600}.empty{background:var(--panel3);border:1.5px dashed var(--border);border-radius:16px;padding:1.6rem;text-align:center;color:var(--soft);margin:1rem 0}.empty strong{color:var(--text)}
+.insight{background:rgba(96,165,250,.10);border:1px solid rgba(96,165,250,.28);border-radius:14px;padding:1rem 1.15rem;margin-top:1rem;color:var(--soft);line-height:1.6}.insight b{color:var(--text)}.warn{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35)}
+mark.entity{padding:2px 7px;border-radius:7px;font-weight:800}.entity-wrap{background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:1.1rem;line-height:2.35;font-size:1.05rem;color:var(--text)}
+.badge{display:inline-flex;margin:.15rem;padding:.25rem .65rem;border-radius:999px;font-size:.78rem;font-weight:800;background:#e5e7eb;color:#0f172a;border:1px solid #cbd5e1;white-space:nowrap}.chip{display:inline-block;background:rgba(24,224,196,.12);border:1px solid rgba(24,224,196,.28);color:#9ffbed;border-radius:999px;padding:.2rem .55rem;font-weight:700;font-size:.78rem;margin:.1rem}
+[data-testid="stDataFrame"]{border:1px solid var(--border);border-radius:14px;overflow:hidden}.stPlotlyChart,.stPlot{background:var(--panel)!important;border-radius:14px!important}hr{border-color:var(--border)!important}
+@media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}.hero h1{font-size:1.6rem!important}}
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
-# ─────────────────────────────────────────────
-# MATPLOTLIB DARK THEME
-# ─────────────────────────────────────────────
-DARK_BG   = "#111827"
-DARK_AX   = "#1a2235"
-ACCENT    = "#00e5c3"
-ACCENT2   = "#7b61ff"
-ACCENT3   = "#ff6b6b"
-GOLD      = "#f5c842"
-TEXT_COL  = "#e8edf5"
-MUTED_COL = "#8899aa"
+DARK_BG = "#07111f"
+AX_BG = "#14233a"
+TEXT = "#f4f7fb"
+MUTED = "#b8c4d6"
+GRID = "#2b3f5f"
+PALETTE = ["#18e0c4", "#60a5fa", "#a78bfa", "#f59e0b", "#fb7185", "#22c55e", "#f472b6", "#38bdf8"]
 
-PALETTE = [ACCENT, ACCENT2, GOLD, ACCENT3, "#ff9f43", "#54a0ff", "#5f27cd", "#01abc5"]
 
-def apply_dark_style(fig, ax):
+def style_axis(fig, ax):
     fig.patch.set_facecolor(DARK_BG)
-    ax.set_facecolor(DARK_AX)
-    ax.tick_params(colors=MUTED_COL, labelsize=9)
-    ax.xaxis.label.set_color(MUTED_COL)
-    ax.yaxis.label.set_color(MUTED_COL)
-    ax.title.set_color(TEXT_COL)
+    ax.set_facecolor(AX_BG)
+    ax.tick_params(colors=MUTED, labelsize=9)
+    ax.xaxis.label.set_color(MUTED)
+    ax.yaxis.label.set_color(MUTED)
+    ax.title.set_color(TEXT)
     for spine in ax.spines.values():
-        spine.set_edgecolor("#1e2d45")
-    ax.grid(True, color="#1e2d45", linewidth=.7, linestyle='--', alpha=.6)
+        spine.set_color(GRID)
+    ax.grid(True, color=GRID, alpha=.45, linestyle="--")
     ax.set_axisbelow(True)
     return fig, ax
 
-# ─────────────────────────────────────────────
-# SIDEBAR
-# ─────────────────────────────────────────────
+
+def parse_uploaded_json(uploaded_file):
+    """Accepts JSON, JSONL, or malformed JSONL with a few bad lines."""
+    if uploaded_file is None:
+        return None, 0, []
+    raw = uploaded_file.getvalue().decode("utf-8-sig", errors="replace").strip()
+    if not raw:
+        return pd.DataFrame(), 0, []
+    errors = []
+    try:
+        obj = json.loads(raw)
+        if isinstance(obj, list):
+            return pd.DataFrame(obj), 0, []
+        if isinstance(obj, dict):
+            # IRR summary is often a dict of labels -> metrics.
+            if all(isinstance(v, dict) for v in obj.values()):
+                return pd.DataFrame(obj).T.reset_index(names="label"), 0, []
+            return pd.DataFrame([obj]), 0, []
+    except Exception:
+        pass
+
+    rows = []
+    for i, line in enumerate(raw.splitlines(), start=1):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rows.append(json.loads(line))
+        except Exception as exc:
+            errors.append({"line": i, "error": str(exc), "preview": line[:100]})
+    return pd.DataFrame(rows), len(errors), errors
+
+
+def normalize_main_df(df):
+    df = df.copy()
+    if "text" not in df.columns:
+        df["text"] = ""
+    if "accept" not in df.columns:
+        df["accept"] = [[] for _ in range(len(df))]
+    if "spans" not in df.columns:
+        df["spans"] = [[] for _ in range(len(df))]
+
+    def as_list(x):
+        if isinstance(x, list):
+            return x
+        if pd.isna(x):
+            return []
+        if isinstance(x, str):
+            try:
+                val = json.loads(x)
+                return val if isinstance(val, list) else [x]
+            except Exception:
+                return [x]
+        return []
+
+    df["accept"] = df["accept"].apply(as_list)
+    df["spans"] = df["spans"].apply(lambda x: x if isinstance(x, list) else [])
+    df["clean_text"] = df["text"].astype(str).str.lower().str.replace(r"[^a-zA-Z\s]", " ", regex=True).str.replace(r"\s+", " ", regex=True).str.strip()
+    df["word_count"] = df["clean_text"].apply(lambda x: len(str(x).split()))
+    return df
+
+
+def interpret_alpha(alpha):
+    if pd.isna(alpha):
+        return "Tidak ada data"
+    if alpha >= .80:
+        return "Sangat baik"
+    if alpha >= .60:
+        return "Baik"
+    if alpha >= .40:
+        return "Cukup"
+    if alpha >= .20:
+        return "Rendah"
+    return "Sangat rendah"
+
+
+def file_list(files):
+    if not files:
+        return "<span class='chip'>Belum ada file</span>"
+    if not isinstance(files, list):
+        files = [files]
+    return "".join(f"<span class='chip'>📄 {escape(f.name)}</span>" for f in files)
+
+
 with st.sidebar:
-    st.markdown("""
-    <div class="sidebar-brand">
-        <div class="logo">🌿</div>
-        <h2>ABSA Lab</h2>
-        <p>Analytics Dashboard</p>
-    </div>
-    """, unsafe_allow_html=True)
-
+    st.markdown("""<div class='sidebar-brand'><div class='logo'>🌿</div><h2>ABSA Lab</h2><p>EDA & IRR Dashboard</p></div>""", unsafe_allow_html=True)
     menu = st.selectbox(
-        "PILIH ANALISIS",
-        ["🏠  Overview", "📊  Distribusi Label", "🏷️  Distribusi Entitas",
-         "📏  Panjang Review", "🔗  Korelasi Label", "🔍  NER Viewer"],
-        key="nav_menu"
+        "Pilih halaman",
+        ["Overview", "Distribusi Label", "Distribusi Entitas", "Panjang Review", "Korelasi Label", "NER Viewer", "IRR Agreement"],
     )
+    st.caption("Upload dataset utama dan file IRR dari area atas dashboard.")
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("""
-    <div style="border-top:1px solid #1e2d45; padding-top:1.2rem;">
-        <p style="font-size:.68rem;color:#8899aa;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem;">Upload Data</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────
-# HERO
-# ─────────────────────────────────────────────
 st.markdown("""
-<div class="hero">
-    <div class="hero-tag">Aspect-Based Sentiment Analysis</div>
-    <h1>EDA & IRR <span>Dashboard</span></h1>
-    <p>Eksplorasi distribusi label, entitas, korelasi, dan kesepakatan antar-anotator (IRR) secara interaktif.</p>
+<div class='hero'>
+  <div class='tag'>🌿 Aspect-Based Sentiment Analysis</div>
+  <h1>EDA & IRR <span>Dashboard</span></h1>
+  <p>Dashboard eksplorasi dataset: preview data, distribusi label, distribusi entitas, panjang review, korelasi label, NER viewer, dan hasil Inter-Annotator Agreement.</p>
 </div>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-# FILE UPLOAD (main area)
-# ─────────────────────────────────────────────
-col_up1, col_up2 = st.columns(2)
-with col_up1:
-    st.markdown('<p style="font-family:Syne;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#8899aa;margin-bottom:.4rem;">Dataset Utama</p>', unsafe_allow_html=True)
-    uploaded_file = st.file_uploader("Upload file JSONL", type=["jsonl"], key="main_file", label_visibility="collapsed")
-with col_up2:
-    st.markdown('<p style="font-family:Syne;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#8899aa;margin-bottom:.4rem;">IRR Data</p>', unsafe_allow_html=True)
-    irr_file = st.file_uploader("Upload IRR JSONL", type=["jsonl"], key="irr_file", label_visibility="collapsed")
+st.markdown("<div class='upload-panel'>", unsafe_allow_html=True)
+up1, up2 = st.columns(2)
+with up1:
+    st.markdown("<div class='small-label'>Dataset Utama</div>", unsafe_allow_html=True)
+    main_files = st.file_uploader("Upload satu atau beberapa file JSON/JSONL", type=["json", "jsonl"], accept_multiple_files=True, key="main_files")
+    st.markdown(file_list(main_files), unsafe_allow_html=True)
+with up2:
+    st.markdown("<div class='small-label'>File IRR</div>", unsafe_allow_html=True)
+    irr_files = st.file_uploader("Upload file IRR JSON/JSONL", type=["json", "jsonl"], accept_multiple_files=True, key="irr_files")
+    st.markdown(file_list(irr_files), unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-# PROCESS MAIN DATA
-# ─────────────────────────────────────────────
-df = None
-if uploaded_file:
-    data, errors = [], 0
-    for line in uploaded_file.read().decode("utf-8").splitlines():
-        try:
-            data.append(json.loads(line))
-        except:
-            errors += 1
-    df = pd.DataFrame(data)
+# Load all main files and keep all uploaded files visible
+frames, total_errors, all_errors = [], 0, []
+for f in main_files or []:
+    parsed, err_count, errors = parse_uploaded_json(f)
+    if parsed is not None and not parsed.empty:
+        parsed["source_file"] = f.name
+        frames.append(parsed)
+    total_errors += err_count
+    all_errors += [{"file": f.name, **e} for e in errors]
 
-    def clean_text(text):
-        text = str(text).lower()
-        text = re.sub(r'[^a-zA-Z\s]', '', text)
-        return re.sub(r'\s+', ' ', text).strip()
+df = normalize_main_df(pd.concat(frames, ignore_index=True)) if frames else None
 
-    df['clean_text'] = df['text'].apply(clean_text)
-    df['length'] = df['clean_text'].apply(lambda x: len(x.split()))
+# Load all IRR files robustly
+irr_frames, irr_errors = [], []
+for f in irr_files or []:
+    parsed, err_count, errors = parse_uploaded_json(f)
+    if parsed is not None and not parsed.empty:
+        parsed["source_file"] = f.name
+        irr_frames.append(parsed)
+    irr_errors += [{"file": f.name, **e} for e in errors]
 
-    # Compute stats
-    total_rows = len(df)
-    total_errors = errors
-    all_labels = df['accept'].dropna().explode()
-    n_labels = all_labels.nunique()
-    avg_len = int(df['length'].mean())
+df_irr = pd.concat(irr_frames, ignore_index=True) if irr_frames else None
 
-    # ── STAT CARDS ──
-    st.markdown(f"""
-    <div class="stat-row">
-        <div class="stat-card">
-            <div class="accent-bar" style="background:linear-gradient(90deg,#00e5c3,#7b61ff)"></div>
-            <div class="s-icon">📄</div>
-            <div class="s-val">{total_rows:,}</div>
-            <div class="s-label">Total Review</div>
-        </div>
-        <div class="stat-card">
-            <div class="accent-bar" style="background:linear-gradient(90deg,#7b61ff,#ff6b6b)"></div>
-            <div class="s-icon">🏷️</div>
-            <div class="s-val">{n_labels}</div>
-            <div class="s-label">Unique Labels</div>
-        </div>
-        <div class="stat-card">
-            <div class="accent-bar" style="background:linear-gradient(90deg,#f5c842,#00e5c3)"></div>
-            <div class="s-icon">📏</div>
-            <div class="s-val">{avg_len}</div>
-            <div class="s-label">Avg. Panjang (kata)</div>
-        </div>
-        <div class="stat-card">
-            <div class="accent-bar" style="background:linear-gradient(90deg,#ff6b6b,#f5c842)"></div>
-            <div class="s-icon">⚠️</div>
-            <div class="s-val">{total_errors}</div>
-            <div class="s-label">Parse Error</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.success(f"✅  Dataset berhasil dimuat — {total_rows} baris, {total_errors} error.")
-
-    # ── CONTENT BY MENU ──
-    clean_menu = menu.split("  ")[-1] if "  " in menu else menu
-
-    # ── OVERVIEW ──
-    if "Overview" in menu:
-        st.markdown('<div class="panel">', unsafe_allow_html=True)
-        st.markdown('<div class="panel-title">📄 <span>Preview</span> Dataset</div>', unsafe_allow_html=True)
-        st.dataframe(
-            df[['text', 'accept']].head(50).style.set_properties(**{
-                'background-color': '#1a2235',
-                'color': '#e8edf5',
-                'border-color': '#1e2d45'
-            }),
-            use_container_width=True
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # ── DISTRIBUSI LABEL ──
-    elif "Distribusi Label" in menu:
-        st.markdown('<div class="panel">', unsafe_allow_html=True)
-        st.markdown('<div class="panel-title">📊 <span>Distribusi</span> Label ABSA</div>', unsafe_allow_html=True)
-
-        label_counts = all_labels.value_counts().sort_values(ascending=False)
-        n = len(label_counts)
-        bar_colors = [PALETTE[i % len(PALETTE)] for i in range(n)]
-
-        fig, ax = plt.subplots(figsize=(10, 4.5))
-        bars = ax.bar(label_counts.index, label_counts.values, color=bar_colors, width=.6, zorder=3)
-        fig, ax = apply_dark_style(fig, ax)
-        ax.set_xlabel("Label", fontsize=9, color=MUTED_COL)
-        ax.set_ylabel("Jumlah", fontsize=9, color=MUTED_COL)
-        plt.xticks(rotation=30, ha='right', fontsize=8)
-
-        # value labels on bars
-        for bar in bars:
-            h = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2, h + .5, str(int(h)),
-                    ha='center', va='bottom', fontsize=8, color=TEXT_COL, fontweight='bold')
-
-        fig.tight_layout()
-        st.pyplot(fig)
-        plt.close(fig)
-
-        st.markdown("""
-        <div class="insight-box">
-            <div class="i-title">💡 Insight</div>
-            <ul>
-                <li>Dataset hasil cleaning tersisa <strong style="color:#e8edf5">678 review</strong> — di bawah standar 800, dipertahankan demi kualitas anotasi.</li>
-                <li>Label dominan: <span class="badge badge-green">PRODUCT_POSITIVE</span></li>
-                <li>Diikuti oleh: <span class="badge badge-purple">PLACE_POSITIVE</span> dan <span class="badge badge-green">PRICE_POSITIVE</span></li>
-                <li>Label negatif sangat sedikit dalam dataset.</li>
-            </ul>
-            <div class="warn">⚡ Dataset <strong>tidak seimbang (class imbalance)</strong> — model berpotensi bias ke sentimen positif.</div>
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # ── DISTRIBUSI ENTITAS ──
-    elif "Distribusi Entitas" in menu:
-        st.markdown('<div class="panel">', unsafe_allow_html=True)
-        st.markdown('<div class="panel-title">🏷️ <span>Distribusi</span> Entitas NER</div>', unsafe_allow_html=True)
-
-        entities = []
-        for spans in df['spans'].dropna():
-            if isinstance(spans, list):
-                for s in spans:
-                    if 'label' in s:
-                        entities.append(s['label'])
-
-        entity_counts = pd.Series(entities).value_counts()
-        n = len(entity_counts)
-        bar_colors = [PALETTE[i % len(PALETTE)] for i in range(n)]
-
-        fig, ax = plt.subplots(figsize=(10, 4.5))
-        bars = ax.bar(entity_counts.index, entity_counts.values, color=bar_colors, width=.6, zorder=3)
-        fig, ax = apply_dark_style(fig, ax)
-        ax.set_xlabel("Entitas", fontsize=9, color=MUTED_COL)
-        ax.set_ylabel("Frekuensi", fontsize=9, color=MUTED_COL)
-        plt.xticks(rotation=30, ha='right', fontsize=8)
-
-        for bar in bars:
-            h = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2, h + .5, str(int(h)),
-                    ha='center', va='bottom', fontsize=8, color=TEXT_COL, fontweight='bold')
-
-        fig.tight_layout()
-        st.pyplot(fig)
-        plt.close(fig)
-
-        st.markdown("""
-        <div class="insight-box">
-            <div class="i-title">💡 Insight</div>
-            <ul>
-                <li>Entitas paling sering muncul: <span class="badge badge-green">PRODUCT_POSITIVE</span></li>
-                <li>Diikuti: <span class="badge badge-purple">PLACE_POSITIVE</span>, <span class="badge badge-green">PRICE_POSITIVE</span></li>
-                <li>Entitas lain jauh lebih sedikit, distribusi sangat tidak merata.</li>
-            </ul>
-            <div class="warn">⚡ Distribusi tidak merata → model kesulitan belajar entitas minor.</div>
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # ── PANJANG REVIEW ──
-    elif "Panjang Review" in menu:
-        st.markdown('<div class="panel">', unsafe_allow_html=True)
-        st.markdown('<div class="panel-title">📏 <span>Distribusi</span> Panjang Review</div>', unsafe_allow_html=True)
-
-        col_a, col_b = st.columns([2, 1])
-        with col_a:
-            fig, ax = plt.subplots(figsize=(8, 4))
-            n_data, bins, patches = ax.hist(df['length'], bins=30, color=ACCENT, alpha=.85, zorder=3, edgecolor=DARK_BG)
-            # gradient color
-            for i, patch in enumerate(patches):
-                frac = i / len(patches)
-                r = int(0 + frac * (123))
-                g = int(229 - frac * (229-97))
-                b = int(195 - frac * (195-255))
-                patch.set_facecolor(f"#{r:02x}{g:02x}{b:02x}")
-
-            ax.axvline(df['length'].mean(), color=GOLD, linewidth=1.5, linestyle='--', label=f"Rata-rata: {df['length'].mean():.1f}")
-            ax.axvline(df['length'].median(), color=ACCENT3, linewidth=1.5, linestyle=':', label=f"Median: {df['length'].median():.1f}")
-            ax.legend(fontsize=8, labelcolor=TEXT_COL, facecolor=DARK_AX, edgecolor=MUTED_COL)
-
-            fig, ax = apply_dark_style(fig, ax)
-            ax.set_xlabel("Jumlah Kata", fontsize=9)
-            ax.set_ylabel("Frekuensi", fontsize=9)
-            fig.tight_layout()
-            st.pyplot(fig)
-            plt.close(fig)
-
-        with col_b:
-            stats = df['length'].describe()
-            st.markdown(f"""
-            <div style="background:#1a2235;border:1px solid #1e2d45;border-radius:10px;padding:1.2rem;">
-                <p style="font-family:Syne;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:#8899aa;margin-bottom:1rem;">Statistik</p>
-                {''.join([f'<div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid #1e2d45;"><span style="color:#8899aa;font-size:.85rem">{k.capitalize()}</span><span style="color:#e8edf5;font-weight:600;font-size:.85rem">{v:.1f}</span></div>' for k, v in stats.items()])}
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.markdown("""
-        <div class="insight-box">
-            <div class="i-title">💡 Insight</div>
-            <ul>
-                <li>Mayoritas review memiliki panjang pendek–sedang.</li>
-                <li>Terdapat sedikit review yang sangat panjang (outlier).</li>
-                <li>Distribusi cocok untuk model NLP berbasis transformer standar.</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # ── KORELASI LABEL ──
-    elif "Korelasi Label" in menu:
-        st.markdown('<div class="panel">', unsafe_allow_html=True)
-        st.markdown('<div class="panel-title">🔗 <span>Korelasi</span> Antar Label</div>', unsafe_allow_html=True)
-
-        mlb = MultiLabelBinarizer()
-        label_matrix = mlb.fit_transform(df['accept'])
-        df_label = pd.DataFrame(label_matrix, columns=mlb.classes_)
-        corr = df_label.corr()
-
-        fig, ax = plt.subplots(figsize=(11, 7))
-        sns.heatmap(
-            corr, annot=True, fmt=".2f",
-            cmap=sns.diverging_palette(260, 160, s=90, l=45, n=256),
-            center=0, linewidths=.5, linecolor=DARK_BG,
-            annot_kws={"size": 8, "color": TEXT_COL},
-            ax=ax,
-            cbar_kws={"shrink": .7}
-        )
-        fig.patch.set_facecolor(DARK_BG)
-        ax.set_facecolor(DARK_AX)
-        ax.tick_params(colors=MUTED_COL, labelsize=8)
-        plt.xticks(rotation=35, ha='right')
-        fig.tight_layout()
-        st.pyplot(fig)
-        plt.close(fig)
-
-        st.markdown("""
-        <div class="insight-box">
-            <div class="i-title">💡 Insight</div>
-            <ul>
-                <li>Korelasi positif kuat antara label satu aspek dengan sentimen yang sama.</li>
-                <li>Label lintas aspek cenderung berkorelasi rendah.</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # ── NER VIEWER ──
-    elif "NER Viewer" in menu:
-        st.markdown('<div class="panel">', unsafe_allow_html=True)
-        st.markdown('<div class="panel-title">🔍 <span>NER</span> Viewer</div>', unsafe_allow_html=True)
-
-        color_map = {
-            "PRODUCT":   "#00e5c3",
-            "PRICE":     "#2ecc71",
-            "PLACE":     "#ff9f43",
-            "PROMOTION": "#7b61ff",
-            "POSITIVE":  "#54a0ff",
-            "NEGATIVE":  "#ff6b6b",
-            "NEUTRAL":   "#8899aa",
-        }
-
-        def get_color(label):
-            for key in color_map:
-                if key in label:
-                    return color_map[key]
-            return "#8899aa"
-
-        idx = st.slider("Pilih Indeks Data", 0, len(df)-1, 0)
-
-        text  = df.iloc[idx]['text']
-        spans = df.iloc[idx]['spans']
-
-        col_v1, col_v2 = st.columns([3, 1])
-        with col_v1:
-            st.markdown('<p style="font-family:Syne;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#8899aa;margin-bottom:.5rem;">Teks Asli</p>', unsafe_allow_html=True)
-            colored_text = text
-            if isinstance(spans, list):
-                for span in sorted(spans, key=lambda x: x['start'], reverse=True):
-                    s, e, lbl = span['start'], span['end'], span['label']
-                    c = get_color(lbl)
-                    colored_text = (
-                        colored_text[:s]
-                        + f"<mark style='background:{c}22;color:{c};border:1px solid {c}44;padding:1px 6px;border-radius:5px;font-weight:600'>"
-                        + f"{text[s:e]}<sup style='font-size:.6rem;margin-left:3px;opacity:.8'>{lbl}</sup></mark>"
-                        + colored_text[e:]
-                    )
-            st.markdown(f'<div class="ner-wrap">{colored_text}</div>', unsafe_allow_html=True)
-
-        with col_v2:
-            st.markdown('<p style="font-family:Syne;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#8899aa;margin-bottom:.5rem;">Entitas</p>', unsafe_allow_html=True)
-            if isinstance(spans, list):
-                for span in spans:
-                    c = get_color(span['label'])
-                    st.markdown(f"""
-                    <div style="background:{c}15;border-left:3px solid {c};border-radius:6px;padding:.5rem .8rem;margin-bottom:.5rem">
-                        <div style="font-size:.72rem;color:{c};font-weight:700;letter-spacing:.06em">{span['label']}</div>
-                        <div style="font-size:.88rem;color:#e8edf5;margin-top:.2rem">"{text[span['start']:span['end']]}"</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-        # Legend
-        st.markdown('<div class="legend-wrap">', unsafe_allow_html=True)
-        for key, val in color_map.items():
-            st.markdown(f"""
-            <div class="legend-item">
-                <div class="legend-dot" style="background:{val}"></div>
-                <span>{key}</span>
-            </div>
-            """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────
-# IRR SECTION
-# ─────────────────────────────────────────────
-st.markdown("""
-<div class="section-divider">
-    <div class="sd-line"></div>
-    <div class="sd-label">Inter-Annotator Agreement</div>
-    <div class="sd-line"></div>
-</div>
-""", unsafe_allow_html=True)
-
-if irr_file:
-    irr_data = []
-    for line in irr_file.read().decode("utf-8").splitlines():
-        try:
-            irr_data.append(json.loads(line))
-        except:
-            pass
-
-    df_irr = pd.DataFrame(irr_data).T
-    cols_to_show = [c for c in ["kripp_alpha", "percent_agreement", "gwet_ac2"] if c in df_irr.columns]
-    if cols_to_show:
-        df_irr_summary = df_irr[cols_to_show]
-
-        st.markdown('<div class="panel">', unsafe_allow_html=True)
-        st.markdown('<div class="panel-title">📈 <span>Hasil</span> IRR</div>', unsafe_allow_html=True)
-        st.dataframe(df_irr_summary.style.set_properties(**{
-            'background-color': '#1a2235',
-            'color': '#e8edf5',
-            'border-color': '#1e2d45'
-        }), use_container_width=True)
-
-        st.markdown("""
-        <div class="insight-box">
-            <div class="i-title">💡 Insight IRR</div>
-            <ul>
-                <li>Label <strong style="color:#e8edf5">positif</strong> → agreement tinggi antar anotator.</li>
-                <li>Label <strong style="color:#e8edf5">netral &amp; negatif</strong> → agreement rendah, terdapat inkonsistensi.</li>
-                <li>Terdapat perbedaan interpretasi antar anotator pada kasus ambigu.</li>
-            </ul>
-            <div class="warn">⚡ Perlu perbaikan <strong>annotation guideline</strong> untuk meningkatkan konsistensi.</div>
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+if df is None:
+    st.markdown("""<div class='empty'>📂 <strong>Silakan upload dataset utama.</strong><br>Format yang didukung: JSON atau JSONL. Semua file yang diupload akan ditampilkan dan digabung otomatis.</div>""", unsafe_allow_html=True)
 else:
-    st.markdown("""
-    <div style="background:#111827;border:2px dashed #1e2d45;border-radius:14px;padding:2rem;text-align:center;color:#8899aa;">
-        <div style="font-size:2rem;margin-bottom:.5rem">📂</div>
-        <p style="font-family:Syne;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;margin:0">
-            Upload file IRR JSONL di atas untuk melihat hasil agreement
-        </p>
+    labels = df["accept"].explode().dropna()
+    avg_len = 0 if df.empty else df["word_count"].mean()
+    st.markdown(f"""
+    <div class='stat-grid'>
+      <div class='stat'><div class='icon'>📄</div><div class='val'>{len(df):,}</div><div class='label'>Total review</div></div>
+      <div class='stat'><div class='icon'>🏷️</div><div class='val'>{labels.nunique()}</div><div class='label'>Unique labels</div></div>
+      <div class='stat'><div class='icon'>📏</div><div class='val'>{avg_len:.1f}</div><div class='label'>Rata-rata kata</div></div>
+      <div class='stat'><div class='icon'>⚠️</div><div class='val'>{total_errors}</div><div class='label'>Parse error</div></div>
     </div>
+    <div class='notice'>✅ Dataset berhasil dimuat: {len(df):,} baris dari {len(main_files or [])} file. Semua file upload sudah digabung dan ditampilkan di daftar file.</div>
     """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-# FOOTER
-# ─────────────────────────────────────────────
-st.markdown("""
-<div style="text-align:center;padding:3rem 0 1.5rem;border-top:1px solid #1e2d45;margin-top:3rem">
-    <p style="font-family:Syne;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:#8899aa;margin:0">
-        🌿 ABSA Analytics Dashboard &nbsp;·&nbsp; Aspect-Based Sentiment Analysis
-    </p>
-</div>
-""", unsafe_allow_html=True)
+    if total_errors:
+        with st.expander("Lihat detail parse error"):
+            st.dataframe(pd.DataFrame(all_errors), use_container_width=True)
+
+    if menu == "Overview":
+        st.markdown("<div class='panel'><div class='panel-title'>📄 <b>Preview</b> Dataset</div>", unsafe_allow_html=True)
+        show_cols = [c for c in ["source_file", "text", "accept", "spans", "word_count"] if c in df.columns]
+        st.dataframe(df[show_cols].head(100), use_container_width=True, height=430)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    elif menu == "Distribusi Label":
+        st.markdown("<div class='panel'><div class='panel-title'>📊 <b>Distribusi</b> Label ABSA</div>", unsafe_allow_html=True)
+        counts = labels.value_counts().sort_values(ascending=False)
+        fig, ax = plt.subplots(figsize=(11, 5))
+        ax.bar(counts.index.astype(str), counts.values, color=[PALETTE[i % len(PALETTE)] for i in range(len(counts))])
+        style_axis(fig, ax)
+        ax.set_xlabel("Label"); ax.set_ylabel("Jumlah")
+        plt.xticks(rotation=35, ha="right")
+        for i, v in enumerate(counts.values):
+            ax.text(i, v + max(counts.values) * .01, str(int(v)), ha="center", color=TEXT, fontsize=9, fontweight="bold")
+        fig.tight_layout(); st.pyplot(fig); plt.close(fig)
+        st.markdown("<div class='insight'><b>Catatan:</b> halaman ini mengikuti isi EDA notebook: explode kolom <code>accept</code>, hitung frekuensi label, lalu tampilkan label terbanyak.</div></div>", unsafe_allow_html=True)
+
+    elif menu == "Distribusi Entitas":
+        st.markdown("<div class='panel'><div class='panel-title'>🏷️ <b>Distribusi</b> Entitas NER</div>", unsafe_allow_html=True)
+        entities = [s.get("label") for spans in df["spans"] for s in (spans if isinstance(spans, list) else []) if isinstance(s, dict) and s.get("label")]
+        if entities:
+            counts = pd.Series(entities).value_counts()
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.bar(counts.index.astype(str), counts.values, color=[PALETTE[i % len(PALETTE)] for i in range(len(counts))])
+            style_axis(fig, ax); ax.set_xlabel("Entitas"); ax.set_ylabel("Jumlah")
+            plt.xticks(rotation=35, ha="right")
+            fig.tight_layout(); st.pyplot(fig); plt.close(fig)
+        else:
+            st.info("Kolom spans tidak berisi entitas yang dapat dihitung.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    elif menu == "Panjang Review":
+        st.markdown("<div class='panel'><div class='panel-title'>📏 <b>Distribusi</b> Panjang Review</div>", unsafe_allow_html=True)
+        c1, c2 = st.columns([2, 1])
+        with c1:
+            fig, ax = plt.subplots(figsize=(8, 4.5))
+            ax.hist(df["word_count"], bins=30, color=PALETTE[0], edgecolor=DARK_BG, alpha=.9)
+            ax.axvline(df["word_count"].mean(), color="#f59e0b", linestyle="--", linewidth=2, label=f"Mean {df['word_count'].mean():.1f}")
+            ax.axvline(df["word_count"].median(), color="#fb7185", linestyle=":", linewidth=2, label=f"Median {df['word_count'].median():.1f}")
+            style_axis(fig, ax); ax.set_xlabel("Jumlah kata"); ax.set_ylabel("Frekuensi"); ax.legend(facecolor=AX_BG, edgecolor=GRID, labelcolor=TEXT)
+            fig.tight_layout(); st.pyplot(fig); plt.close(fig)
+        with c2:
+            st.dataframe(df["word_count"].describe().to_frame("nilai"), use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    elif menu == "Korelasi Label":
+        st.markdown("<div class='panel'><div class='panel-title'>🔗 <b>Korelasi</b> Antar Label</div>", unsafe_allow_html=True)
+        if labels.empty:
+            st.info("Belum ada label untuk dihitung.")
+        else:
+            mlb = MultiLabelBinarizer()
+            label_df = pd.DataFrame(mlb.fit_transform(df["accept"]), columns=mlb.classes_)
+            fig, ax = plt.subplots(figsize=(11, 7))
+            sns.heatmap(label_df.corr(), cmap="coolwarm", center=0, linewidths=.5, linecolor=GRID, annot=True, fmt=".2f", annot_kws={"size":8}, ax=ax)
+            fig.patch.set_facecolor(DARK_BG); ax.set_facecolor(AX_BG); ax.tick_params(colors=MUTED, labelsize=8)
+            plt.xticks(rotation=35, ha="right"); plt.yticks(rotation=0)
+            fig.tight_layout(); st.pyplot(fig); plt.close(fig)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    elif menu == "NER Viewer":
+        st.markdown("<div class='panel'><div class='panel-title'>🔍 <b>NER</b> Viewer</div>", unsafe_allow_html=True)
+        idx = st.slider("Pilih indeks data", 0, max(len(df)-1, 0), 0)
+        row = df.iloc[idx]
+        text = str(row["text"])
+        spans = row["spans"] if isinstance(row["spans"], list) else []
+        colors = {"PRODUCT":"#18e0c4", "PRICE":"#22c55e", "PLACE":"#f59e0b", "PROMOTION":"#a78bfa", "POSITIVE":"#60a5fa", "NEGATIVE":"#fb7185", "NEUTRAL":"#94a3b8"}
+        def get_color(label):
+            return next((v for k, v in colors.items() if k in str(label)), "#94a3b8")
+        rendered = escape(text)
+        # Render by original offsets safely. Escape non-span segments separately.
+        if spans:
+            parts, pos = [], 0
+            for s in sorted([x for x in spans if isinstance(x, dict) and "start" in x and "end" in x], key=lambda x: x["start"]):
+                start, end, label = int(s["start"]), int(s["end"]), str(s.get("label", "LABEL"))
+                if start < pos or start > len(text):
+                    continue
+                parts.append(escape(text[pos:start]))
+                col = get_color(label)
+                parts.append(f"<mark class='entity' style='background:{col}22;color:{col};border:1px solid {col}66'>{escape(text[start:end])}<sup> {escape(label)}</sup></mark>")
+                pos = max(pos, end)
+            parts.append(escape(text[pos:]))
+            rendered = "".join(parts)
+        st.markdown(f"<div class='entity-wrap'>{rendered}</div>", unsafe_allow_html=True)
+        if spans:
+            st.markdown("<br>" + "".join(f"<span class='badge'>{escape(str(s.get('label','')))}: {escape(text[int(s.get('start',0)):int(s.get('end',0))])}</span>" for s in spans if isinstance(s, dict)), unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# IRR is always shown on its own menu or in a helpful empty state
+if menu == "IRR Agreement":
+    st.markdown("<div class='panel'><div class='panel-title'>📈 <b>Inter-Annotator</b> Agreement</div>", unsafe_allow_html=True)
+    if df_irr is None:
+        st.markdown("<div class='empty'>📂 <strong>Upload file IRR di bagian atas.</strong><br>Format JSON object seperti output EDA <code>nlp2_iaaa_textcat.jsonl</code> juga sudah didukung, jadi file IRR tidak harus JSONL per baris.</div>", unsafe_allow_html=True)
+    else:
+        metric_cols = [c for c in ["label", "kripp_alpha", "percent_agreement", "gwet_ac2", "source_file"] if c in df_irr.columns]
+        show = df_irr[metric_cols].copy() if metric_cols else df_irr.copy()
+        if "kripp_alpha" in show.columns:
+            show["kategori"] = pd.to_numeric(show["kripp_alpha"], errors="coerce").apply(interpret_alpha)
+            show = show.sort_values("kripp_alpha", ascending=False, na_position="last")
+        st.dataframe(show, use_container_width=True, height=430)
+        if "kripp_alpha" in show.columns:
+            plot_df = show.dropna(subset=["kripp_alpha"]).copy()
+            if not plot_df.empty:
+                y = plot_df["label"] if "label" in plot_df.columns else plot_df.index.astype(str)
+                fig, ax = plt.subplots(figsize=(9, max(3.5, len(plot_df) * .35)))
+                ax.barh(y.astype(str), plot_df["kripp_alpha"], color=PALETTE[1])
+                style_axis(fig, ax); ax.set_xlabel("Krippendorff Alpha"); ax.set_ylabel("Label")
+                fig.tight_layout(); st.pyplot(fig); plt.close(fig)
+        if irr_errors:
+            with st.expander("Lihat detail parse error IRR"):
+                st.dataframe(pd.DataFrame(irr_errors), use_container_width=True)
+        st.markdown("<div class='insight warn'><b>Catatan IRR:</b> kategori otomatis dibuat dari nilai Krippendorff Alpha. Agreement rendah menandakan guideline anotasi perlu diperjelas untuk label tersebut.</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+st.markdown("<hr><div style='text-align:center;color:var(--muted);padding:1.2rem 0;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:.75rem'>🌿 ABSA Analytics Dashboard · EDA Notebook Aligned</div>", unsafe_allow_html=True)
