@@ -107,7 +107,7 @@ if uploaded_file:
         st.subheader("🏷️ Distribusi Entitas")
 
         entities = []
-        for spans in df['spans']:
+        for spans in df['spans'].dropna():
             if isinstance(spans, list):
                 for s in spans:
                     if 'label' in s:
@@ -165,9 +165,6 @@ if uploaded_file:
 
         st.pyplot(fig)
 
-    # =============================
-    # NER VIEWER MULTI COLOR
-    # =============================
     elif menu == "NER Viewer":
         st.subheader("🔍 NER Viewer (Slide Data)")
 
@@ -181,7 +178,6 @@ if uploaded_file:
 
         st.write("### 🏷️ Entity Highlight")
 
-        # COLOR MAP
         color_map = {
             "PRODUCT": "#1f77b4",
             "PRICE": "#2ca02c",
@@ -229,7 +225,9 @@ st.header("📈 Inter-Annotator Agreement (IRR)")
 irr_file = st.file_uploader("Upload IRR JSONL", type=["jsonl"])
 
 if irr_file:
-    irr_data = json.load(irr_file)
+    irr_data = []
+    for line in irr_file.read().decode("utf-8").splitlines():
+        irr_data.append(json.loads(line))
 
     df_irr = pd.DataFrame(irr_data).T
     df_irr_summary = df_irr[["kripp_alpha", "percent_agreement", "gwet_ac2"]]
