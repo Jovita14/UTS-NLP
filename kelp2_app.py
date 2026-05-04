@@ -237,17 +237,29 @@ if irr_file:
         except:
             continue
 
-    df_irr = pd.DataFrame(irr_data).T
-    df_irr_summary = df_irr[["kripp_alpha", "percent_agreement", "gwet_ac2"]]
+    df_irr = pd.DataFrame(irr_data)
 
-    st.dataframe(df_irr_summary)
+    st.subheader("📊 Raw IRR Data")
+    st.dataframe(df_irr)
 
-    st.markdown("""
-    **Insight IRR:**
+    expected_cols = ["kripp_alpha", "percent_agreement", "gwet_ac2"]
+    available_cols = [col for col in expected_cols if col in df_irr.columns]
 
-    - Label positif → agreement tinggi
-    - Label netral & negatif → rendah
-    - Ada inkonsistensi anotasi
+    st.subheader("📋 IRR Summary")
 
-    ➤ Perlu perbaikan guideline anotasi
-    """)
+    if available_cols:
+        df_irr_summary = df_irr[available_cols]
+        st.dataframe(df_irr_summary)
+
+        st.markdown("""
+        **Insight IRR:**
+
+        - Label positif → agreement tinggi  
+        - Label netral & negatif → lebih rendah  
+        - Ada kemungkinan inkonsistensi anotasi  
+
+        ➤ Disarankan perbaiki guideline anotasi
+        """)
+    else:
+        st.warning("Kolom IRR tidak ditemukan atau format berbeda dari ekspektasi.")
+        st.write("Kolom yang tersedia:", df_irr.columns)
