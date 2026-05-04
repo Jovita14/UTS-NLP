@@ -225,8 +225,17 @@ irr_file = st.file_uploader("Upload IRR JSONL", type=["jsonl"])
 
 if irr_file:
     irr_data = []
+
     for line in irr_file.read().decode("utf-8").splitlines():
-        irr_data.append(json.loads(line))
+        line = line.strip()
+
+        if not line:
+            continue
+
+        try:
+            irr_data.append(json.loads(line))
+        except:
+            continue
 
     df_irr = pd.DataFrame(irr_data).T
     df_irr_summary = df_irr[["kripp_alpha", "percent_agreement", "gwet_ac2"]]
