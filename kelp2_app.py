@@ -45,7 +45,7 @@ html, body, [data-testid="stAppViewContainer"]{background:var(--bg)!important;co
 .small-label{font-size:.78rem;color:var(--muted);font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.45rem}
 [data-testid="stFileUploader"]{background:var(--panel2)!important;border:1.5px dashed var(--border)!important;border-radius:14px!important;padding:.8rem!important}
 [data-testid="stFileUploader"]:hover{border-color:var(--accent)!important;background:#182944!important}
-[data-testid="stFileUploader"] *{color:var(--text)!important;opacity:1!important}.uploadedFile{background:#eef3fb!important;color:#111827!important;border:1px solid #cbd5e1!important}.uploadedFile *{color:#111827!important;opacity:1!important}
+[data-testid="stFileUploader"] *{color:var(--text)!important;opacity:1!important}.uploadedFile{background:#1b2d48!important;color:var(--text)!important;border:1px solid #36577d!important;border-radius:12px!important}.uploadedFile *{color:var(--text)!important;opacity:1!important}.uploadedFile [data-testid='stFileUploaderFileName']{color:#eaf2ff!important}.uploadedFile [data-testid='stFileUploaderFileSize']{color:#b8c4d6!important}
 [data-testid="stSelectbox"] label,[data-testid="stRadio"] label,[data-testid="stSlider"] label{color:var(--soft)!important;font-weight:700!important}
 [data-testid="stSelectbox"] div,[data-testid="stSlider"] *{color:var(--text)!important}.stSelectbox [data-baseweb="select"]>div{background:var(--panel2)!important;border-color:var(--border)!important;color:var(--text)!important}
 .stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin:1rem 0 1.2rem}.stat{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:16px;padding:1.05rem;position:relative;overflow:hidden}.stat:before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--accent),var(--accent2))}.stat .icon{font-size:1.55rem}.stat .val{font-size:2.15rem;font-weight:800;line-height:1;margin:.55rem 0 .2rem;color:var(--text)}.stat .label{font-size:.78rem;color:var(--soft);letter-spacing:.08em;text-transform:uppercase;font-weight:700}
@@ -181,7 +181,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='upload-panel'>", unsafe_allow_html=True)
 up1, up2 = st.columns(2)
 with up1:
     st.markdown("<div class='small-label'>Dataset Utama</div>", unsafe_allow_html=True)
@@ -191,7 +190,12 @@ with up2:
     st.markdown("<div class='small-label'>File IRR</div>", unsafe_allow_html=True)
     irr_files = st.file_uploader("Upload file IRR JSON/JSONL", type=["json", "jsonl"], accept_multiple_files=True, key="irr_files")
     st.markdown(file_list(irr_files), unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
+
+st.markdown("""
+<div class='insight' style='margin-top:.25rem;margin-bottom:1rem'>
+  <b>Keterangan upload:</b> Dataset utama berisi kolom <code>text</code>, <code>accept</code>, dan opsional <code>spans</code>. File IRR berisi metrik agreement seperti <code>kripp_alpha</code>, <code>percent_agreement</code>, atau <code>gwet_ac2</code>. Semua file yang diupload akan muncul sebagai chip di bawah area upload dan digabung otomatis.
+</div>
+""", unsafe_allow_html=True)
 
 # Load all main files and keep all uploaded files visible
 frames, total_errors, all_errors = [], 0, []
@@ -239,7 +243,7 @@ else:
         st.markdown("<div class='panel'><div class='panel-title'>📄 <b>Preview</b> Dataset</div>", unsafe_allow_html=True)
         show_cols = [c for c in ["source_file", "text", "accept", "spans", "word_count"] if c in df.columns]
         st.dataframe(df[show_cols].head(100), use_container_width=True, height=430)
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("<div class='insight'><b>Keterangan:</b> halaman ini dipakai untuk mengecek isi data setelah file digabung. Kolom <code>accept</code> adalah daftar label ABSA, <code>spans</code> adalah posisi entitas NER, dan <code>word_count</code> adalah jumlah kata hasil cleaning sederhana.</div></div>", unsafe_allow_html=True)
 
     elif menu == "Distribusi Label":
         st.markdown("<div class='panel'><div class='panel-title'>📊 <b>Distribusi</b> Label ABSA</div>", unsafe_allow_html=True)
@@ -252,7 +256,8 @@ else:
         for i, v in enumerate(counts.values):
             ax.text(i, v + max(counts.values) * .01, str(int(v)), ha="center", color=TEXT, fontsize=9, fontweight="bold")
         fig.tight_layout(); st.pyplot(fig); plt.close(fig)
-        st.markdown("<div class='insight'><b>Catatan:</b> halaman ini mengikuti isi EDA notebook: explode kolom <code>accept</code>, hitung frekuensi label, lalu tampilkan label terbanyak.</div></div>", unsafe_allow_html=True)
+        top_label = counts.index[0] if not counts.empty else "-"
+        st.markdown(f"<div class='insight'><b>Keterangan:</b> grafik ini menunjukkan jumlah kemunculan setiap label dari kolom <code>accept</code>. Label terbanyak saat ini adalah <b>{escape(str(top_label))}</b>. Jika ada label yang terlalu dominan, berarti dataset cenderung tidak seimbang dan model bisa lebih mudah memprediksi label mayoritas.</div></div>", unsafe_allow_html=True)
 
     elif menu == "Distribusi Entitas":
         st.markdown("<div class='panel'><div class='panel-title'>🏷️ <b>Distribusi</b> Entitas NER</div>", unsafe_allow_html=True)
@@ -265,8 +270,10 @@ else:
             plt.xticks(rotation=35, ha="right")
             fig.tight_layout(); st.pyplot(fig); plt.close(fig)
         else:
+            counts = pd.Series(dtype=int)
             st.info("Kolom spans tidak berisi entitas yang dapat dihitung.")
-        st.markdown("</div>", unsafe_allow_html=True)
+        top_entity = counts.index[0] if len(counts) else "-"
+        st.markdown(f"<div class='insight'><b>Keterangan:</b> distribusi entitas dihitung dari label dalam kolom <code>spans</code>. Entitas paling sering muncul adalah <b>{escape(str(top_entity))}</b>. Bagian ini membantu melihat aspek mana yang paling banyak diberi anotasi dan aspek mana yang masih kurang data.</div></div>", unsafe_allow_html=True)
 
     elif menu == "Panjang Review":
         st.markdown("<div class='panel'><div class='panel-title'>📏 <b>Distribusi</b> Panjang Review</div>", unsafe_allow_html=True)
@@ -280,7 +287,7 @@ else:
             fig.tight_layout(); st.pyplot(fig); plt.close(fig)
         with c2:
             st.dataframe(df["word_count"].describe().to_frame("nilai"), use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='insight'><b>Keterangan:</b> histogram ini menunjukkan sebaran panjang review dalam jumlah kata. Rata-rata panjang review adalah <b>{df['word_count'].mean():.1f}</b> kata dan median <b>{df['word_count'].median():.1f}</b> kata. Data yang sangat panjang dapat dianggap outlier dan perlu dicek ulang sebelum modeling.</div></div>", unsafe_allow_html=True)
 
     elif menu == "Korelasi Label":
         st.markdown("<div class='panel'><div class='panel-title'>🔗 <b>Korelasi</b> Antar Label</div>", unsafe_allow_html=True)
@@ -294,7 +301,7 @@ else:
             fig.patch.set_facecolor(DARK_BG); ax.set_facecolor(AX_BG); ax.tick_params(colors=MUTED, labelsize=8)
             plt.xticks(rotation=35, ha="right"); plt.yticks(rotation=0)
             fig.tight_layout(); st.pyplot(fig); plt.close(fig)
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("<div class='insight'><b>Keterangan:</b> heatmap ini menunjukkan hubungan antar label setelah kolom <code>accept</code> diubah menjadi format multi-label biner. Nilai mendekati <b>1</b> berarti dua label sering muncul bersama, nilai mendekati <b>-1</b> berarti cenderung berlawanan, dan nilai sekitar <b>0</b> berarti hubungannya lemah.</div></div>", unsafe_allow_html=True)
 
     elif menu == "NER Viewer":
         st.markdown("<div class='panel'><div class='panel-title'>🔍 <b>NER</b> Viewer</div>", unsafe_allow_html=True)
