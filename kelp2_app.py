@@ -224,42 +224,19 @@ st.header("📈 Inter-Annotator Agreement (IRR)")
 irr_file = st.file_uploader("Upload IRR JSONL", type=["jsonl"])
 
 if irr_file:
-    irr_data = []
+    irr_data = json.load(irr_file)
 
-    for line in irr_file.read().decode("utf-8").splitlines():
-        line = line.strip()
+    df_irr = pd.DataFrame(irr_data).T
+    df_irr_summary = df_irr[["kripp_alpha", "percent_agreement", "gwet_ac2"]]
 
-        if not line:
-            continue
+    st.dataframe(df_irr_summary)
 
-        try:
-            irr_data.append(json.loads(line))
-        except:
-            continue
+    st.markdown("""
+    **Insight IRR:**
 
-    df_irr = pd.DataFrame(irr_data)
+    - Label positif → agreement tinggi
+    - Label netral & negatif → rendah
+    - Ada inkonsistensi anotasi
 
-    st.subheader("📊 Raw IRR Data")
-    st.dataframe(df_irr)
-
-    expected_cols = ["kripp_alpha", "percent_agreement", "gwet_ac2"]
-    available_cols = [col for col in expected_cols if col in df_irr.columns]
-
-    st.subheader("📋 IRR Summary")
-
-    if available_cols:
-        df_irr_summary = df_irr[available_cols]
-        st.dataframe(df_irr_summary)
-
-        st.markdown("""
-        **Insight IRR:**
-
-        - Label positif → agreement tinggi  
-        - Label netral & negatif → lebih rendah  
-        - Ada kemungkinan inkonsistensi anotasi  
-
-        ➤ Disarankan perbaiki guideline anotasi
-        """)
-    else:
-        st.warning("Kolom IRR tidak ditemukan atau format berbeda dari ekspektasi.")
-        st.write("Kolom yang tersedia:", df_irr.columns)
+    ➤ Perlu perbaikan guideline anotasi
+    """)
